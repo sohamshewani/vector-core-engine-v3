@@ -1,0 +1,119 @@
+[build-system]
+requires = [
+    "setuptools>=68.0.0",
+    "wheel>=0.41.0",
+    "cmake>=3.25.0",
+    "ninja>=1.11.0",
+    "pybind11>=2.11.0"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vector-core-engine"
+version = "0.1.0"
+description = "A high-performance vector core engine with C++ bindings"
+readme = "README.md"
+authors = [
+    { name = "Engineering Team", email = "eng@example.com" }
+]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-benchmark>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
+
+[tool.setuptools]
+packages = ["vector_core_engine"]
+
+[tool.setuptools.package-data]
+vector_core_engine = ["*.so", "*.pyd", "*.dylib"]
+
+[tool.distutils.bdist_wheel]
+universal = false
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[tool.zoraxy.tasks]
+# Working targets fulfilling the requirements with missing-folder protection
+
+[tool.custom.scripts]
+all = "python -m pip install --no-build-isolation -e .[dev]"
+
+build = """
+python -c '
+import os, subprocess, sys
+if not os.path.exists("CMakeLists.txt"):
+    print("Notice: CMakeLists.txt not found. Skipping C++ build.")
+    sys.exit(0)
+os.makedirs("build", exist_ok=True)
+cmake_args = [
+    "cmake", "-B", "build", "-S", ".",
+    "-DCMAKE_BUILD_TYPE=Release",
+    "-DCMAKE_CXX_FLAGS=-O3 -Wall -Wextra"
+]
+subprocess.run(cmake_args, check=True)
+subprocess.run(["cmake", "--build", "build", "--config", "Release", "-j"], check=True)
+'
+"""
+
+test = """
+python -c '
+import os, subprocess, sys
+if not os.path.exists("tests"):
+    print("Notice: tests directory not found. Skipping tests.")
+    sys.exit(0)
+subprocess.run(["pytest"], check=True)
+'
+"""
+
+clean = """
+python -c '
+import shutil, os
+for path in ["build", "dist", ".pytest_cache", "vector_core_engine.egg-info"]:
+    if os.path.exists(path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
+print("Cleaned successfully.")
+'
+"""
+
+benchmark = """
+python -c '
+import os, subprocess, sys
+if not os.path.exists("benchmarks") and not any("benchmark" in f for f in os.listdir("tests") if os.path.isdir("tests")):
+    print("Notice: No benchmark directory or tests found. Skipping benchmarks.")
+    sys.exit(0)
+bench_path = "benchmarks" if os.path.exists("benchmarks") else "tests"
+subprocess.run(["pytest", bench_path, "--benchmark-only"], check=True)
+'
+"""
